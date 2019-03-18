@@ -71,7 +71,9 @@ log.custom_('Server listening on port 3000 ');
 
 ### Log levels
 Current working level is: 1
+<br>
 Default level for new log methods: 1
+<br>
 Default levels:
 
 ```js
