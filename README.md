@@ -145,6 +145,11 @@ log.setTextColors({
 ```
 
 
+# Collaborators
+
+- [Max López](https://github.com/maxlopez)
+
+
 # License
 
 MIT
