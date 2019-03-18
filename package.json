@@ -1,6 +1,6 @@
 {
   "name": "log-beautify",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Show messages on your terminal with style :-)",
   "main": "index.js",
   "scripts": {
