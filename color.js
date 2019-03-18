@@ -48,8 +48,7 @@ class Color {
     }
 
     //Remove format, spaces and %
-    static clear(_color, removePercentage) {
-        removePercentage = removePercentage !== undefined ? !!removePercentage : false;
+    static clear(_color, removePercentage = false) {
         let newColor = Color.removeFormat(_color);
         if (newColor && removePercentage) {
             newColor = newColor.replace(/%/g, '');
@@ -62,13 +61,11 @@ class Color {
         return !!_color && _color.replace(/(hex|rgba?|hsla?|hwb|hsv|\(+|\)+|\s)/g, '');
     }
 
-    static toArray(_color, removePercentage) {
-        removePercentage = removePercentage !== undefined ? !!removePercentage : false;
+    static toArray(_color, removePercentage = false) {
         const colorString = Color.clear(_color, removePercentage);
         if (!colorString) return [_color];
         return colorString.split(',');
     }
-
 }
 
 module.exports = Color;

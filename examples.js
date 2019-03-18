@@ -14,13 +14,6 @@ log.useSymbols = false;
 | Change colors
 |--------------------------------------------------
 */
-//Valid formats
-//const keyword = "blue";//black,white,red,green,yellow,magenta,cyan,gray
-//const hex = "#FFF000";
-//const rgb = "rgb(255,255,255)";
-//const hsl = "hsl(0,100%,50%)";
-//const hsv = "hsv(330, 93%, 98%)";
-//const hwb = "hwb(0, 100%, 0%)";
 log.setColors({
     success: "#00FF00",
     error_: "rgb(191,0,96)",
@@ -62,4 +55,23 @@ log.setSymbols({
 log.setTextColors({
     error_: 'black',
     info_: 'black',
+});
+
+
+/**
+|--------------------------------------------------
+| Change current level
+|--------------------------------------------------
+*/
+log.setLevel(1);
+
+
+/**
+|--------------------------------------------------
+| Add or change levels
+|--------------------------------------------------
+*/
+log.setLevels({
+    custom: "info",//use info level
+    fatal: 6,
 });

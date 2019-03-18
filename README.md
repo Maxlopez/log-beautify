@@ -18,10 +18,13 @@ npm install log-beautify
 ```js
 const log = require('log-beautify');
 
+log.trace('Trace');//change the level to use trace
 log.success('Success');
-log.ok('Ok');
+log.ok('Ok');//success alias
+log.debug('Debug');
 log.info('Info');
 log.warning('Warning');
+log.warn('Warn');//warning alias
 log.error('Error');
 
 ```
@@ -33,10 +36,14 @@ log.error('Error');
 - `log.success_()` *(for background color)*
 - `log.ok()` *(success alias)*
 - `log.ok_()` *(success_ alias)*
+- `log.debug()`
+- `log.debug_()`
 - `log.info()`
 - `log.info_()`
 - `log.warning()`
 - `log.warning_()`
+- `log.warn()` *(warning alias)*
+- `log.warn_()` *(warning_ alias)*
 - `log.error()`
 - `log.error_()`
 
@@ -62,12 +69,30 @@ log.custom_('Server listening on port 3000 ');
 </p>
 
 
+### Log levels
+Default levels:
+
+```js
+{
+    silent: -1,//hide all logs
+    trace: 0,
+    success: 1,
+    debug: 2,
+    info: 3,
+    warning: 4,
+    error: 5,
+}
+```
+
+
 ### Config
 
 - `log.useSymbols = true` *(Enable or disable symbols)*
 - `log.setColors({})` *(Add or change colors)*
 - `log.setSymbols({})` *(Add or change symbols)*
 - `log.setTextColors({})` *(Change text colors for bg logs)*
+- `log.setLevel(1)` *(Change current level)*
+- `log.setLevels({})` *(Add or change levels)*
 
 
 
@@ -83,9 +108,11 @@ You can use the following color formats. (Use strings)
 - `hwb` Example: `"hwb(0, 100%, 0%)"`
 
 
+
 # Usage examples
 
 ```js
+
 /**
 |--------------------------------------------------
 | Disable symbols
@@ -140,6 +167,25 @@ log.setSymbols({
 log.setTextColors({
     error_: 'black',
     info_: 'black',
+});
+
+
+/**
+|--------------------------------------------------
+| Change current level
+|--------------------------------------------------
+*/
+log.setLevel(2);
+
+
+/**
+|--------------------------------------------------
+| Add or change levels
+|--------------------------------------------------
+*/
+log.setLevels({
+    fatal: 6,
+    custom: "info"//use info level
 });
 
 ```
