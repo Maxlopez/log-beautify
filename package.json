@@ -1,0 +1,26 @@
+{
+  "name": "log-beautify",
+  "version": "1.0.5",
+  "description": "Show messages on your terminal with style :-)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "log",
+    "console.log",
+    "logs",
+    "logger",
+    "logging",
+    "debug",
+    "cmd",
+    "powershell",
+    "command-line",
+    "messages"
+  ],
+  "author": "Max Lopez",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^2.4.2"
+  }
+}
