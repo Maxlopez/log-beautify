@@ -1,7 +1,7 @@
 'use strict';
 
 const ch = require('chalk');
-const Color = require('./color');
+const Color = require('color-regex');
 
 //Default text color for bgColors
 const defaultTextColor = 'black';
