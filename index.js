@@ -21,7 +21,10 @@ class LogBeautify {
         this.useSymbols = true;
         this.defaultSymbol = '!';
         this.defaultLevel = 1;//default level for new log methods
-        this._level = 1;//current level
+        this._localLevels = {};//key=callerFile, value=level
+        this._namespaceLevels = {};//key=namespace, value=level
+        this._namespaces = {};//key=callerFile, value=namespace
+        this._globalLevel = 1;//global level
 
         this._levels = {
             silent: -1,//hide all logs
@@ -81,8 +84,55 @@ class LogBeautify {
         this._createLogs();
     }
 
-    setLevel(level) {
-        this._level = this._parseLevel(level) !== null ? this._parseLevel(level) : this._level;
+    setLevel(level, namespace = 'global') {
+        const newLevel = this._parseLevel(level) !== null ? this._parseLevel(level) : this._globalLevel;
+        if (namespace === 'global' ){
+            this._globalLevel = newLevel;
+        } else {
+            this.setNamespaceLevel(newLevel, namespace);
+        } 
+    }
+
+    setLocalLevel(level) {
+        const newLevel = this._parseLevel(level);
+        if (newLevel !== null) {
+            if (this._callerFileTobase64()) {
+                this._localLevels[this._callerFileTobase64()] = newLevel;
+            }
+        }
+    }
+
+    setNamespaceLevel(level, namespace = null ) {
+        const newLevel = this._parseLevel(level);
+        if (newLevel !== null && namespace !== null) {
+            this._namespaceLevels[namespace] = newLevel;
+            this.useNamespace(namespace);
+        }
+    }
+
+    useNamespace(namespace = null) {
+        if (namespace !== null) {
+            this._namespaces[this._callerFileTobase64()] = namespace;
+        }
+    }
+
+    namespace(namespace = null) {
+        this.useNamespace(namespace);
+    }
+
+    getWorkingLevel() {
+        const localKey = this._callerFileTobase64();
+        //Check local level
+        if (localKey && this._localLevels[localKey] !== undefined ) {
+            return this._localLevels[localKey];
+        }
+        //Check namespace level
+        const namespace = this._namespaces[localKey];
+        if (namespace !== undefined && this._namespaceLevels[namespace] !== undefined ) {
+            return this._namespaceLevels[namespace];
+        }
+        //Global level
+        return this._globalLevel;
     }
 
     setLevels(levels) {
@@ -164,7 +214,8 @@ class LogBeautify {
     }
 
     _shouldLog(level){
-        return this._level > this._levels.silent && level >= this._level;
+        const workingLevel = this.getWorkingLevel();
+        return workingLevel > this._levels.silent && level >= workingLevel;
     }
 
     _getKeyLevel(key){
@@ -226,8 +277,23 @@ class LogBeautify {
         }
         return null;
     }
+
+    _callerFileTobase64() {
+        const traceInfo = StackTracer.getInfo();
+        if (traceInfo.callerFile) {
+            return toBase64(traceInfo.callerFile);
+        }
+        return null;
+    }
+
+
 }
 
+/**
+|--------------------------------------------------
+| Helpers
+|--------------------------------------------------
+*/
 
 const isObject = (obj) => {
     return !!obj && obj.constructor === Object;
@@ -239,6 +305,88 @@ const parseArgs = (args) => {
         return isObject(_arg) ? JSON.stringify(_arg) : _arg;
     });
 }
+
+const toBase64 = (string) => {
+    return typeof btoa === "function" ?  btoa(string) : Buffer.from(string).toString('base64');
+}
+
+
+
+
+/**
+|--------------------------------------------------
+| Stack Tracer
+|--------------------------------------------------
+*/
+
+class StackTracer {
+    static isNode() {
+        return typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
+    }
+    static isBrowser() {
+        return typeof window !== 'undefined' && typeof window.document !== 'undefined';
+    }
+
+    //https://stackoverflow.com/questions/13227489/how-can-one-get-the-file-path-of-the-caller-function-in-node-js
+    static getInfo() {
+        // Save original Error.prepareStackTrace
+        let origPrepareStackTrace = Error.prepareStackTrace;
+        let currentFile, callerFile = null, lineNumber = null, functionName = null;
+        try {
+            //Override with function that just returns 'stack'
+            Error.prepareStackTrace = function (err, stack) {
+                return stack;
+            };
+
+            //Create a new 'Error', which automatically gets 'stack'
+            let err = new Error();
+
+            //Evaluate 'err.stack', which calls our new 'Error.prepareStackTrace'
+            var stack = err.stack;
+
+            if (StackTracer.isNode()) {
+                currentFile = stack.shift().getFileName();
+                for (let key in stack) {
+                    if (!stack.hasOwnProperty(key)) continue;
+                    callerFile = stack[key].getFileName();
+                    if (currentFile !== callerFile) {
+                        lineNumber = stack[key].getLineNumber();
+                        functionName = stack[key].getFunctionName();
+                        break;
+                    };
+                }
+            } else if (StackTracer.isBrowser()) {
+                //Tested on React js
+                for (let key in stack) {
+                    if (!stack.hasOwnProperty(key)) continue;
+                    const value = stack[key].toString();
+                    if (value.indexOf('Module') !== -1) {
+                        if (typeof stack[key].getFunctionName === 'function') {
+                            callerFile = functionName = stack[key].getFunctionName();
+                        } else {
+                            callerFile = functionName = value.split(' ')[0];
+                        }
+                        lineNumber = stack[key].getLineNumber();
+                        break;
+                    }
+                }
+            }
+        } catch (e) {
+            //console.log('ERROR', e.message)
+        }
+
+        //Restore original 'Error.prepareStackTrace'
+        Error.prepareStackTrace = origPrepareStackTrace;
+
+        return {
+            callerFile,
+            lineNumber,
+            functionName,
+        };
+    }
+
+}
+
 
 
 module.exports = new LogBeautify();
