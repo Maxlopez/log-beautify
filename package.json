@@ -1,6 +1,6 @@
 {
   "name": "log-beautify",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Show log messages on your terminal with style :-) . Stop using console.log() and use log.success(), log.info(), log.warn(), log.error(). Use debugging levels to enable or disable log messages.",
   "main": "index.js",
   "scripts": {
