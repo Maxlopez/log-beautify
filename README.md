@@ -7,7 +7,7 @@
 
 # log-beautify
 
-Show log message on your terminal with style :-) . Stop using console.log() and use log.success(), log.info(), log.warn(), log.error(). Use debugging levels to enable or disable log messages.
+Show log messages on your terminal with style :-) . Stop using console.log() and use log.success(), log.info(), log.warn(), log.error(). Use debugging levels to enable or disable log messages.
 
 # Installation
 ```bash
