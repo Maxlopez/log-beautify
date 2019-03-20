@@ -7,7 +7,7 @@
 
 # log-beautify
 
-Show messages on your terminal with style :-)
+Show log message on your terminal with style :-) . Stop using console.log() and use log.success(), log.info(), log.warn(), log.error(). Use debugging levels to enable or disable log messages.
 
 # Installation
 ```bash
@@ -198,6 +198,12 @@ log.setLevels({
 # Collaborators
 
 - [Max López](https://github.com/maxlopez)
+
+
+# Thanks
+- [Log Beautify](https://www.npmjs.com/package/log-beautify)
+- [Color Regex](https://www.npmjs.com/package/color-regex)
+- [Chalk](https://www.npmjs.com/package/chalk)
 
 
 # License
