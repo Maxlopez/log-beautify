@@ -3,8 +3,11 @@
 const ch = require('chalk');
 const Color = require('color-regex');
 
+
+
 //Default text color for bgColors
-const defaultTextColor = 'black';
+const defaultBgTextColor = 'black';
+
 const defaultSymbols = {
     trace: '??',
     success: '√',
@@ -16,8 +19,49 @@ const defaultSymbols = {
     error: '×'
 }
 
+const terminalColors = {
+    trace: '#3C9DFF',
+    trace_: '#3C9DFF',
+    success: '#26FF5C',
+    success_: '#26FF5C',
+    ok: '#26FF5C',
+    ok_: '#26FF5C',
+    debug: '#34DADA',
+    debug_: '#34DADA',
+    info: '#3C9DFF',
+    info_: '#3C9DFF',
+    warning: '#FFC926',
+    warning_: '#FFC926',
+    warn: '#FFC926',
+    warn_: '#FFC926',
+    error: '#F55256',
+    error_: '#F55256',
+}
+const browserColors = {
+    trace: '#3C9DFF',
+    trace_: '#3C9DFF',
+    success: '#008000',
+    success_: '#5AFB78',
+    ok: '#008000',
+    ok_: '#5AFB78',
+    debug: '#07AABC',
+    debug_: '#80FCFF',
+    info: '#0151B1',
+    info_: '#80C6FF',
+    warning: '#BB8404',
+    warning_: '#FFD280',
+    warn: '#BB8404',
+    warn_: '#FFD280',
+    error: '#E60000',
+    error_: '#F55256',
+}
+
+const LOG_TEXT = 'TEXT';
+const LOG_BG = 'BG';
+
+
 class LogBeautify {
-    constructor(options) {
+    constructor() {
         this.useSymbols = true;
         this.defaultSymbol = '!';
         this.defaultLevel = 1;//default level for new log methods
@@ -25,6 +69,7 @@ class LogBeautify {
         this._namespaceLevels = {};//key=namespace, value=level
         this._namespaces = {};//key=callerFile, value=namespace
         this._globalLevel = 1;//global level
+        this._stackTracer = new StackTracer();
 
         this._levels = {
             silent: -1,//hide all logs
@@ -38,27 +83,10 @@ class LogBeautify {
             error: 5,
         }
 
-        this._colors = {
-            trace: '#3C9DFF',
-            trace_: '#3C9DFF',
-            success: '#26FF5C',
-            success_: '#26FF5C',
-            ok: '#26FF5C',
-            ok_: '#26FF5C',
-            debug: '#34DADA',
-            debug_: '#34DADA',
-            info: '#3C9DFF',
-            info_: '#3C9DFF',
-            warning: '#FFC926',
-            warning_: '#FFC926',
-            warn: '#FFC926',
-            warn_: '#FFC926',
-            error: '#F55256',
-            error_: '#F55256',
-        }
+        this._colors = this._isBrowser() ? browserColors : terminalColors;
 
         //Text colors for bg logs
-        this._textColors = {
+        this._bgTextColors = {
             trace_: 'black',
             success_: 'black',
             ok_: 'black',
@@ -84,25 +112,28 @@ class LogBeautify {
         this._createLogs();
     }
 
+    /**
+    |--------------------------------------------------
+    | Public methods
+    |--------------------------------------------------
+    */
     setLevel(level, namespace = 'global') {
         const newLevel = this._parseLevel(level) !== null ? this._parseLevel(level) : this._globalLevel;
-        if (namespace === 'global' ){
+        if (namespace === 'global') {
             this._globalLevel = newLevel;
         } else {
             this.setNamespaceLevel(newLevel, namespace);
-        } 
+        }
     }
 
     setLocalLevel(level) {
         const newLevel = this._parseLevel(level);
-        if (newLevel !== null) {
-            if (this._callerFileTobase64()) {
-                this._localLevels[this._callerFileTobase64()] = newLevel;
-            }
+        if (newLevel !== null && this._callerFile()) {
+            this._localLevels[this._callerFile()] = newLevel;
         }
     }
 
-    setNamespaceLevel(level, namespace = null ) {
+    setNamespaceLevel(level, namespace = null) {
         const newLevel = this._parseLevel(level);
         if (newLevel !== null && namespace !== null) {
             this._namespaceLevels[namespace] = newLevel;
@@ -111,8 +142,8 @@ class LogBeautify {
     }
 
     useNamespace(namespace = null) {
-        if (namespace !== null) {
-            this._namespaces[this._callerFileTobase64()] = namespace;
+        if (namespace !== null && this._callerFile()) {
+            this._namespaces[this._callerFile()] = namespace;
         }
     }
 
@@ -121,14 +152,14 @@ class LogBeautify {
     }
 
     getWorkingLevel() {
-        const localKey = this._callerFileTobase64();
+        const filepath = this._callerFile();
         //Check local level
-        if (localKey && this._localLevels[localKey] !== undefined ) {
-            return this._localLevels[localKey];
+        if (filepath && this._localLevels[filepath] !== undefined) {
+            return this._localLevels[filepath];
         }
         //Check namespace level
-        const namespace = this._namespaces[localKey];
-        if (namespace !== undefined && this._namespaceLevels[namespace] !== undefined ) {
+        const namespace = this._namespaces[filepath];
+        if (namespace !== undefined && this._namespaceLevels[namespace] !== undefined) {
             return this._namespaceLevels[namespace];
         }
         //Global level
@@ -138,28 +169,34 @@ class LogBeautify {
     setLevels(levels) {
         Object.keys(levels).map((key) => {
             const level = this._parseLevel(levels[key]);
-            if ( level !== null ){
+            if (level !== null) {
                 this._levels[key] = level;
             }
         });
     }
 
     setColors(colors) {
-        this._colors = {...this._colors, ...colors};
+        this._colors = { ...this._colors, ...colors };
         this._createLogs();
     }
 
-    setTextColors(textColors) {
-        this._textColors = {...this._textColors, ...textColors};
+    setTextColors(bgTextColors) {
+        this._bgTextColors = { ...this._bgTextColors, ...bgTextColors };
     }
 
     setSymbols(symbols) {
-        this._symbols = {...this._symbols, ...symbols};
+        this._symbols = { ...this._symbols, ...symbols };
     }
 
+
+    /**
+    |--------------------------------------------------
+    | Private methods
+    |--------------------------------------------------
+    */
     _useUnicodeSymbols() {
         const env = process.env;
-        return process.platform !== 'win32' || env.CI || env.TERM || env.TERM_PROGRAM;
+        return this._isBrowser() || process.platform !== 'win32' || env.CI || env.TERM || env.TERM_PROGRAM;
     }
 
     _createLogs() {
@@ -179,11 +216,7 @@ class LogBeautify {
     _createTextLog(key) {
         if (!LogBeautify.prototype[key]) {
             LogBeautify.prototype[key] = function (...args) {
-                args = parseArgs(args);
-                if (this.useSymbols ){
-                    args.unshift(' ' + this._getSymbol(key));
-                }
-                this._log(key, this._textColor(this._colors[key])(...args));
+                this._log(LOG_TEXT, key, args);
             }
         }
     }
@@ -191,34 +224,105 @@ class LogBeautify {
     _createBgLog(key) {
         if (!LogBeautify.prototype[key]) {
             LogBeautify.prototype[key] = function (...args) {
-                args = parseArgs(args);
-                if (this.useSymbols) {
-                    args.unshift(' ' + this._getSymbol(key));
-                }
-                const text = this._textColor(this._textColors[key] || defaultTextColor);
-                const bg = this._bgColor(this._colors[key]);
-                this._log(key, bg(text(...args)));
+                this._log(LOG_BG, key, args);
             }
         }
     }
 
-    _log(key, arg){
+    _log(type, key, args) {
         const level = this._getKeyLevel(key);
-        if (this._shouldLog(level)){
-            if (this._getKeyName(key) === 'trace' ){
-                console.trace(arg);
+        if (this._shouldLog(level)) {
+            if (this._getKeyName(key) === 'trace') {
+                console.trace(...args);
             } else {
-                console.log(arg);
+                args = this._parseArgs(args);
+                if (this.useSymbols) {
+                    args.unshift(' ' + this._getSymbol(key));
+                }
+                if (this._isBrowser()) {
+                    this._logBrowser(type, key, args);
+                } else {
+                    this._logTerminal(type, key, args);
+                }
             }
-        } 
+        }
     }
 
-    _shouldLog(level){
+    _logBrowser(type, key, args) {
+        if (!isArray(args)) {
+            console.log(args);
+            return;
+        }
+        if (type === LOG_TEXT) {
+            console.log(this._formatLogBrowser(args), this._getCSS(type, key), ...args);
+        }
+        if (type === LOG_BG) {
+            console.log(this._formatLogBrowser(args), this._getCSS(type, key), ...args);
+        }
+    }
+
+    _logTerminal(type, key, args) {
+        if (type === LOG_TEXT) {
+            console.log(this._chTextColor(this._colors[key])(...this._fixArgs(args)));
+        }
+        if (type === LOG_BG) {
+            const text = this._chTextColor(this._bgTextColors[key] || defaultBgTextColor);
+            const bg = this._chBgColor(this._colors[key]);
+            console.log(bg(text(...this._fixArgs(args))));
+        }
+    }
+
+    _fixArgs(args) {
+        let newArgs = [];
+        args.map(arg => {
+            if (isArray(arg)) {
+                newArgs.push('[');
+                newArgs.push(arg);
+                newArgs.push(']');
+            } else {
+                newArgs.push(arg);
+            }
+        });
+        return newArgs;
+    }
+
+    _formatLogBrowser(args) {
+        let formater = '%c';
+        args.map(arg => {
+            if (typeof arg === 'string') {
+                formater += '%s ';
+            } else if (typeof arg === 'number') {
+                formater += '%d ';
+            } else if (typeof arg === 'object') {
+                formater += '%o';//no add spaces for objects and arrays
+            } else {
+                formater += '%s ';
+            }
+        });
+        return formater.trim();
+    }
+
+    _getCSS(type, key) {
+        let css = '', color, bgColor;
+        if (type === LOG_TEXT) {
+            color = this._colors[key];
+            css += 'color: ' + color;
+        }
+        if (type === LOG_BG) {
+            color = this._bgTextColors[key] || defaultBgTextColor;
+            bgColor = this._colors[key];
+            css += 'color: ' + color;
+            css += '; background-color: ' + bgColor;
+        }
+        return css;
+    }
+
+    _shouldLog(level) {
         const workingLevel = this.getWorkingLevel();
         return workingLevel > this._levels.silent && level >= workingLevel;
     }
 
-    _getKeyLevel(key){
+    _getKeyLevel(key) {
         const _key = this._getKeyName(key);
         //allow level 0
         return this._levels[_key] !== undefined ? this._levels[_key] : this.defaultLevel;
@@ -233,7 +337,7 @@ class LogBeautify {
         return ch;
     }
 
-    _textColor(_color) {
+    _chTextColor(_color) {
         const format = Color.getFormat(_color);
         switch (format) {
             case 'hex':
@@ -251,7 +355,7 @@ class LogBeautify {
         }
     }
 
-    _bgColor(_color) {
+    _chBgColor(_color) {
         const format = Color.getFormat(_color);
         switch (format) {
             case 'hex':
@@ -278,38 +382,55 @@ class LogBeautify {
         return null;
     }
 
-    _callerFileTobase64() {
-        const traceInfo = StackTracer.getInfo();
+    _callerFile() {
+        const traceInfo = this._stackTracer.getInfo();
         if (traceInfo.callerFile) {
-            return toBase64(traceInfo.callerFile);
+            //return toBase64(traceInfo.callerFile);
+            return traceInfo.callerFile;
         }
         return null;
     }
 
+    _isBrowser() {
+        return typeof window !== 'undefined' && typeof window.document !== 'undefined';
+    }
+
+    //Chalk not allow print javascript objects
+    _parseArgs(args) {
+        return args.map((_arg) => {
+            if (this._isBrowser()){
+                return _arg;
+            } else {
+                if (isObject(_arg) ){
+                    return JSON.stringify(_arg, null, 3);
+                } else if (isArray(_arg)){
+                    return this._parseArgs(_arg);
+                }
+                return _arg;
+            }
+        });
+    }
+
 
 }
+
 
 /**
 |--------------------------------------------------
 | Helpers
 |--------------------------------------------------
 */
+const isArray = (obj) => {
+    return !!obj && obj.constructor === Array;
+}
 
 const isObject = (obj) => {
     return !!obj && obj.constructor === Object;
 }
 
-//chalk not allow print javascript objects
-const parseArgs = (args) => {
-    return args.map((_arg) => {
-        return isObject(_arg) ? JSON.stringify(_arg) : _arg;
-    });
-}
-
 const toBase64 = (string) => {
-    return typeof btoa === "function" ?  btoa(string) : Buffer.from(string).toString('base64');
+    return typeof btoa === "function" ? btoa(string) : Buffer.from(string).toString('base64');
 }
-
 
 
 
@@ -320,17 +441,67 @@ const toBase64 = (string) => {
 */
 
 class StackTracer {
-    static isNode() {
+    constructor() {
+        this.traces = {
+            webpack: [
+                //React or Vue: Outside of Class component or Function component
+                '__webpack_require__',
+            ],
+            react: [
+                //Class component
+                'constructClassInstance',
+                'finishClassComponent',
+                'commitLifeCycles',
+
+                //Function component
+                'mountIndeterminateComponent',
+                'updateFunctionComponent'
+            ]
+        }
+    }
+
+    isNode() {
         return typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
     }
-    static isBrowser() {
+
+    isBrowser() {
         return typeof window !== 'undefined' && typeof window.document !== 'undefined';
     }
 
-    //https://stackoverflow.com/questions/13227489/how-can-one-get-the-file-path-of-the-caller-function-in-node-js
-    static getInfo() {
+    isReact() {
+        try {
+            let modules = window.webpackJsonp[0][0];
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    isVue() {
+        try {
+            const Vue = require('vue').default;
+            return !!Vue.version;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    getReactImports() {
+        let imports = [];
+        try {
+            for (let key in window.webpackJsonp[1][1]) {
+                imports.push(key);
+            }
+        } catch (err) {
+            //console.log('Log Beautify Error: ', err.message);
+        }
+        return imports;
+    }
+
+    getInfo() {
         // Save original Error.prepareStackTrace
         let origPrepareStackTrace = Error.prepareStackTrace;
+        let trace;
         let currentFile, callerFile = null, lineNumber = null, functionName = null;
         try {
             //Override with function that just returns 'stack'
@@ -344,7 +515,7 @@ class StackTracer {
             //Evaluate 'err.stack', which calls our new 'Error.prepareStackTrace'
             var stack = err.stack;
 
-            if (StackTracer.isNode()) {
+            if (this.isNode()) {
                 currentFile = stack.shift().getFileName();
                 for (let key in stack) {
                     if (!stack.hasOwnProperty(key)) continue;
@@ -355,18 +526,54 @@ class StackTracer {
                         break;
                     };
                 }
-            } else if (StackTracer.isBrowser()) {
-                //Tested on React js
+            } else if (this.isBrowser()) {
+
                 for (let key in stack) {
                     if (!stack.hasOwnProperty(key)) continue;
                     const value = stack[key].toString();
-                    if (value.indexOf('Module') !== -1) {
-                        if (typeof stack[key].getFunctionName === 'function') {
-                            callerFile = functionName = stack[key].getFunctionName();
-                        } else {
-                            callerFile = functionName = value.split(' ')[0];
+                    const stackName = value.split(' ')[0];
+                    //console.log('$$$', value);
+                    if (this.traces.webpack.indexOf(stackName) !== -1 || this.traces.react.indexOf(stackName) !== -1) {
+                        trace = stack[key - 1].toString();
+                        //React.js
+                        if (this.isReact()) {
+                            if (trace.indexOf('Module') !== -1) {
+                                callerFile = trace.split(' ')[0].replace('Module', '');
+                            } else if (trace.indexOf('new') === 0) {
+                                callerFile = trace.split(' ')[1];//new App (http://test.com/js/main.chunk.js:100:21)
+                            } else {
+                                callerFile = trace.split('.')[0];//HeaderComponent.render
+                            }
+                            if (! /\.(js|jsx)$/gi.test(callerFile)) {
+                                const cf = callerFile;
+                                const filepath = this.getReactImports().find(file => {
+                                    if (file.lastIndexOf(cf + '.js') === file.length - (cf + '.js').length) {
+                                        return file;
+                                    } else if (file.lastIndexOf(cf + '.jsx') === file.length - (cf + '.jsx').length) {
+                                        return file;
+                                    }
+                                });
+                                callerFile = '.' + filepath;
+                            }
                         }
-                        lineNumber = stack[key].getLineNumber();
+
+                        //Vue.js
+                        if (this.isVue()) {
+                            if (trace.indexOf('Module') !== -1) {
+                                if (trace.indexOf('/vue-loader/') !== -1 && trace.indexOf('.vue?vue') !== -1) {
+                                    const parts = trace.split('.js?!');
+                                    if (parts.length) {
+                                        callerFile = parts[parts.length - 1].split('?vue')[0]
+                                    }
+                                } else {
+                                    callerFile = trace.split(' ')[0].replace('Module', '');
+                                }
+                            }
+                        }
+
+                        //Files
+                        functionName = callerFile;
+                        lineNumber = stack[key - 1].getLineNumber();
                         break;
                     }
                 }
@@ -384,9 +591,7 @@ class StackTracer {
             functionName,
         };
     }
-
 }
-
 
 
 module.exports = new LogBeautify();
