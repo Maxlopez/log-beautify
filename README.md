@@ -34,16 +34,16 @@ log.error('Error');
 ### Log methods
 - `log.success()` *(for text color)*
 - `log.success_()` *(for background color)*
-- `log.ok()` *(success alias)*
-- `log.ok_()` *(success_ alias)*
+- `log.ok()` *(log.success() alias)*
+- `log.ok_()` *(log.success_() alias)*
 - `log.debug()`
 - `log.debug_()`
 - `log.info()`
 - `log.info_()`
 - `log.warning()`
 - `log.warning_()`
-- `log.warn()` *(warning alias)*
-- `log.warn_()` *(warning_ alias)*
+- `log.warn()` *(log.warning() alias)*
+- `log.warn_()` *(log.warning_() alias)*
 - `log.error()`
 - `log.error_()`
 
@@ -56,6 +56,7 @@ log.setColors({
 log.setSymbols({
     custom_: "✅ ",
 });
+
 
 //Now you can use it
 log.custom_('Server listening on port 3000 ');
@@ -70,7 +71,7 @@ log.custom_('Server listening on port 3000 ');
 
 
 ### Log levels
-Current working level is: 1
+Global level is: 1
 <br>
 Default level for new log methods: 1
 <br>
@@ -92,10 +93,17 @@ Default levels:
 ### Config
 
 - `log.useSymbols = true` *(Enable or disable symbols)*
+- `log.useLabels = true` *(Enable or disable labels)*
 - `log.setColors({})` *(Add or change colors)*
 - `log.setSymbols({})` *(Add or change symbols)*
+- `log.setLabels({})` *(Add or change labels)*
 - `log.setTextColors({})` *(Change text colors for bg logs)*
-- `log.setLevel(1)` *(Change current level)*
+- `log.setLevel(1)` *(Change global level, default = 1)*
+- `log.setLevel(1, 'namespace')` *(log.setNamespaceLevel() alias)*
+- `log.setNamespaceLevel(1, 'namespace')` *(Create level with namespace and use it in current file, The global level will be ignored)*
+- `log.namespace('namespace')` *(log.useNamespace() alias)*
+- `log.useNamespace('namespace')` *(Use the level of a namespace in the current file, The global level will be ignored. You can use namespaces created in other files)*
+- `log.setLocalLevel(1)` *(Create a level to use only in the current file, The global level will be ignored)*
 - `log.setLevels({})` *(Add or change levels)*
 
 
@@ -123,6 +131,14 @@ You can use the following color formats. (Use strings)
 |--------------------------------------------------
 */
 log.useSymbols = false;
+
+
+/**
+|--------------------------------------------------
+| Disable labels
+|--------------------------------------------------
+*/
+log.useLabels = false;
 
 
 /**
@@ -165,6 +181,16 @@ log.setSymbols({
 
 /**
 |--------------------------------------------------
+| Add or change labels
+|--------------------------------------------------
+*/
+log.setLabels({
+    warning: "WARNING!!!",
+});
+
+
+/**
+|--------------------------------------------------
 | Add or change text colors for bg logs
 |--------------------------------------------------
 */
@@ -176,14 +202,6 @@ log.setTextColors({
 
 /**
 |--------------------------------------------------
-| Change current level
-|--------------------------------------------------
-*/
-log.setLevel(2);
-
-
-/**
-|--------------------------------------------------
 | Add or change levels
 |--------------------------------------------------
 */
@@ -191,6 +209,41 @@ log.setLevels({
     fatal: 6,
     custom: "info"//use info level
 });
+
+
+/**
+|--------------------------------------------------
+| Change global level. 2 = "debug"
+|--------------------------------------------------
+*/
+log.setLevel(2);
+//log.setLevel('debug');
+
+
+/**
+|--------------------------------------------------
+| Add level "info = 3" to use only in the current file, The global level will be ignored
+|--------------------------------------------------
+*/
+log.setLocalLevel('info');
+
+
+/**
+|--------------------------------------------------
+| Create level with namespace and use it in current file, The global level will be ignored
+|--------------------------------------------------
+*/
+log.setNamespaceLevel('error', 'show-only-errors');
+
+
+/**
+|--------------------------------------------------
+| Use namespace created previously. You can use namespaces created in other files.
+|--------------------------------------------------
+*/
+log.useNamespace('show-only-errors');
+//log.namespace('show-only-errors');
+
 
 ```
 

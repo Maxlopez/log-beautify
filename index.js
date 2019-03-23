@@ -5,6 +5,7 @@ const Color = require('color-regex');
 
 
 
+
 //Default text color for bgColors
 const defaultBgTextColor = 'black';
 
@@ -63,6 +64,7 @@ const LOG_BG = 'BG';
 class LogBeautify {
     constructor() {
         this.useSymbols = true;
+        this.useLabels = true;
         this.defaultSymbol = '!';
         this.defaultLevel = 1;//default level for new log methods
         this._localLevels = {};//key=callerFile, value=level
@@ -107,6 +109,17 @@ class LogBeautify {
             warn: '⚠',
             error: '✖'
         } : defaultSymbols;
+
+        this._labels = {
+            trace: 'TRACE',
+            success: 'SUCCESS',
+            ok: 'OK',
+            debug: 'DEBUG',
+            info: 'INFO',
+            warning: 'WARNING',
+            warn: 'WARNING',
+            error: 'ERROR'
+        };
 
         //Create initial logs
         this._createLogs();
@@ -172,6 +185,7 @@ class LogBeautify {
             if (level !== null) {
                 this._levels[key] = level;
             }
+            return key;
         });
     }
 
@@ -186,6 +200,10 @@ class LogBeautify {
 
     setSymbols(symbols) {
         this._symbols = { ...this._symbols, ...symbols };
+    }
+
+    setLabels(labels) {
+        this._labels = { ...this._labels, ...labels };
     }
 
 
@@ -206,11 +224,16 @@ class LogBeautify {
             } else {
                 this._createTextLog(key);
             }
+            return key;
         });
     }
 
     _getSymbol(key) {
         return this._symbols[key] || this._symbols[this._getKeyName(key)] || this.defaultSymbol;
+    }
+
+    _getLabel(key) {
+        return this._labels[key] || this._labels[this._getKeyName(key)] || '';
     }
 
     _createTextLog(key) {
@@ -236,9 +259,6 @@ class LogBeautify {
                 console.trace(...args);
             } else {
                 args = this._parseArgs(args);
-                if (this.useSymbols) {
-                    args.unshift(' ' + this._getSymbol(key));
-                }
                 if (this._isBrowser()) {
                     this._logBrowser(type, key, args);
                 } else {
@@ -253,23 +273,112 @@ class LogBeautify {
             console.log(args);
             return;
         }
+        let cssPrefix;
+        let prefix = this._getPrefix(type, key);
         if (type === LOG_TEXT) {
-            console.log(this._formatLogBrowser(args), this._getCSS(type, key), ...args);
+            cssPrefix = this._getCSS(LOG_BG, key + '_');
+        } else {
+            cssPrefix = this._getCSS(LOG_TEXT, this._getKeyName(key));
         }
-        if (type === LOG_BG) {
-            console.log(this._formatLogBrowser(args), this._getCSS(type, key), ...args);
+        if (prefix) {
+            if (!this.useLabels) {
+                args.unshift(this._getSymbolString(key, type === LOG_TEXT ? '' : ' ', ''));
+                console.log(this._formatLogBrowser(key, args), this._getCSS(type, key), ...args);
+            } else {
+                console.log('%c%s' + this._formatLogBrowser(key, args), cssPrefix, prefix, this._getCSS(type, key), ...args);
+            }
+        } else {
+            console.log(this._formatLogBrowser(key, args), this._getCSS(type, key), ...args);
         }
     }
 
     _logTerminal(type, key, args) {
+        let text, bg, output;
         if (type === LOG_TEXT) {
-            console.log(this._chTextColor(this._colors[key])(...this._fixArgs(args)));
+            if (this._getPrefix(type, key) && !this.useLabels) {
+                args.unshift(this._getSymbolString(key, '', ''));
+            }
+            text = this._chTextColor(this._colors[key])(...this._fixArgs(args));
+            output = text;
+            if (this._getPrefix(type, key)) {
+                if (!this.useLabels) {
+                    console.log(output);
+                } else {
+                    console.log(this._getPrefix(type, key), output);
+                }
+            } else {
+                console.log(output);
+            }
         }
+
         if (type === LOG_BG) {
-            const text = this._chTextColor(this._bgTextColors[key] || defaultBgTextColor);
-            const bg = this._chBgColor(this._colors[key]);
-            console.log(bg(text(...this._fixArgs(args))));
+            text = this._chTextColor(this._bgTextColors[key] || defaultBgTextColor);
+            bg = this._chBgColor(this._colors[key]);
+            if (this._getPrefix(type, key) && !this.useLabels) {
+                args.unshift(this._getSymbolString(key, ' ', ''));
+            }
+            output = bg(text(...this._fixArgs(args)));
+            if (this._getPrefix(type, key)) {
+                if (!this.useLabels) {
+                    console.log(output);
+                } else {
+                    console.log(this._getPrefix(type, key), output);
+                }
+            } else {
+                console.log(output);
+            }
         }
+    }
+
+    _getPrefix(type, key) {
+        let result = this._getSymbolAndLabel(type, key);
+        if (result.success) {
+            return result.payload;
+        }
+        return '';
+    }
+
+    _getSymbolString(key, before = ' ', after = ' ') {
+        if (this.useSymbols && this._getSymbol(key)) {
+            return before + this._getSymbol(key) + after;
+        }
+        return '';
+    }
+
+    _getLabelString(key, before = ' ', after = ' ') {
+        if (this.useLabels && this._getLabel(key)) {
+            return before + this._getLabel(key) + after;
+        }
+        return '';
+    }
+
+    _getSymbolAndLabel(type, key) {
+        let payload = '';
+        let symbol = this._getSymbolString(key, ' ', ' ');
+        let label = symbol ? this._getLabelString(key, '') : this._getLabelString(key);
+
+        if (!symbol && !label) {
+            return {
+                success: false,
+                payload
+            };
+        }
+        if (this._isBrowser()) {
+            payload = symbol + label;
+        } else {
+            if (type === LOG_TEXT) {
+                const text = this._chTextColor(this._bgTextColors[key + '_'] || defaultBgTextColor);
+                const bg = this._chBgColor(this._colors[key + '_']);
+                payload = bg(text(symbol + label));
+            }
+            if (type === LOG_BG) {
+                payload = this._chTextColor(this._colors[this._getKeyName(key)])(symbol + label);
+            }
+        }
+        return {
+            success: true,
+            payload
+        };
     }
 
     _fixArgs(args) {
@@ -282,12 +391,14 @@ class LogBeautify {
             } else {
                 newArgs.push(arg);
             }
+            return arg;
         });
         return newArgs;
     }
 
-    _formatLogBrowser(args) {
-        let formater = '%c';
+    _formatLogBrowser(key, args) {
+        let label = this._getLabelString(key);
+        let formater = label ? '%c ' : '%c';
         args.map(arg => {
             if (typeof arg === 'string') {
                 formater += '%s ';
@@ -298,6 +409,7 @@ class LogBeautify {
             } else {
                 formater += '%s ';
             }
+            return arg;
         });
         return formater.trim();
     }
@@ -319,7 +431,16 @@ class LogBeautify {
 
     _shouldLog(level) {
         const workingLevel = this.getWorkingLevel();
-        return workingLevel > this._levels.silent && level >= workingLevel;
+        const result = workingLevel > this._levels.silent && level >= workingLevel;
+        if (process.env && process.env.NODE_ENV) {
+            if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'development') {
+                return result;
+            } else {
+                //hide all logs on production
+                return false;
+            }
+        }
+        return result;
     }
 
     _getKeyLevel(key) {
@@ -332,7 +453,7 @@ class LogBeautify {
         return key.lastIndexOf('_') === key.length - 1 ? key.substring(0, key.length - 1) : key;
     }
 
-    _chBase(_color) {
+    _chBase() {
         //return ch.bold.underline;//bold resets the color
         return ch;
     }
@@ -351,7 +472,7 @@ class LogBeautify {
             case 'hwb':
                 return this._chBase().hwb(...Color.toArray(_color, true));
             default:
-                return this._chBase().keyword(_color);
+                return validKeywords.indexOf(_color) >= 0 ? this._chBase().keyword(_color) : this._chBase();
         }
     }
 
@@ -369,7 +490,7 @@ class LogBeautify {
             case 'hwb':
                 return ch.bgHwb(...Color.toArray(_color, true));
             default:
-                return ch.bgKeyword(_color);
+                return validKeywords.indexOf(_color) >= 0 ? ch.bgKeyword(_color) : ch;
         }
     }
 
@@ -398,12 +519,12 @@ class LogBeautify {
     //Chalk not allow print javascript objects
     _parseArgs(args) {
         return args.map((_arg) => {
-            if (this._isBrowser()){
+            if (this._isBrowser()) {
                 return _arg;
             } else {
-                if (isObject(_arg) ){
+                if (isObject(_arg)) {
                     return JSON.stringify(_arg, null, 3);
-                } else if (isArray(_arg)){
+                } else if (isArray(_arg)) {
                     return this._parseArgs(_arg);
                 }
                 return _arg;
@@ -428,9 +549,9 @@ const isObject = (obj) => {
     return !!obj && obj.constructor === Object;
 }
 
-const toBase64 = (string) => {
-    return typeof btoa === "function" ? btoa(string) : Buffer.from(string).toString('base64');
-}
+// const toBase64 = (string) => {
+//     return typeof btoa === "function" ? btoa(string) : Buffer.from(string).toString('base64');
+// }
 
 
 
@@ -442,6 +563,7 @@ const toBase64 = (string) => {
 
 class StackTracer {
     constructor() {
+        this._isVue = false;
         this.traces = {
             webpack: [
                 //React or Vue: Outside of Class component or Function component
@@ -470,20 +592,18 @@ class StackTracer {
 
     isReact() {
         try {
-            let modules = window.webpackJsonp[0][0];
-            return true;
+            let arr = window.webpackJsonp[0][0];
+            return !!arr;
         } catch (err) {
             return false;
         }
     }
 
-    isVue() {
-        try {
-            const Vue = require('vue').default;
-            return !!Vue.version;
-        } catch (err) {
-            return false;
+    isVue(trace) {
+        if (trace.indexOf('Module') !== -1 && trace.indexOf('/vue-loader/') !== -1) {
+            this._isVue = true;
         }
+        return this._isVue;
     }
 
     getReactImports() {
@@ -524,7 +644,7 @@ class StackTracer {
                         lineNumber = stack[key].getLineNumber();
                         functionName = stack[key].getFunctionName();
                         break;
-                    };
+                    }
                 }
             } else if (this.isBrowser()) {
 
@@ -547,18 +667,18 @@ class StackTracer {
                             if (! /\.(js|jsx)$/gi.test(callerFile)) {
                                 const cf = callerFile;
                                 const filepath = this.getReactImports().find(file => {
-                                    if (file.lastIndexOf(cf + '.js') === file.length - (cf + '.js').length) {
-                                        return file;
-                                    } else if (file.lastIndexOf(cf + '.jsx') === file.length - (cf + '.jsx').length) {
-                                        return file;
+                                    if (file.indexOf(cf + '.js', file.length - (cf + '.js').length) !== -1) {
+                                        return true;
+                                    } else if (file.indexOf(cf + '.jsx', file.length - (cf + '.jsx').length) !== -1) {
+                                        return true;
                                     }
+                                    return false;
                                 });
                                 callerFile = '.' + filepath;
                             }
                         }
-
                         //Vue.js
-                        if (this.isVue()) {
+                        else if (this.isVue(trace)) {
                             if (trace.indexOf('Module') !== -1) {
                                 if (trace.indexOf('/vue-loader/') !== -1 && trace.indexOf('.vue?vue') !== -1) {
                                     const parts = trace.split('.js?!');
@@ -592,6 +712,12 @@ class StackTracer {
         };
     }
 }
+
+
+
+const validKeywords = ["aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "beige", "bisque", "black", "blanchedalmond", "blue", "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse", "chocolate", "coral", "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue", "darkcyan", "darkgoldenrod", "darkgray", "darkgreen", "darkgrey", "darkkhaki", "darkmagenta", "darkolivegreen", "darkorange", "darkorchid", "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslategray", "darkslategrey", "darkturquoise", "darkviolet", "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue", "firebrick", "floralwhite", "forestgreen", "fuchsia", "gainsboro", "ghostwhite", "gold", "goldenrod", "gray", "green", "greenyellow", "grey", "honeydew", "hotpink", "indianred", "indigo", "ivory", "khaki", "lavender", "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan", "lightgoldenrodyellow", "lightgray", "lightgreen", "lightgrey", "lightpink", "lightsalmon", "lightseagreen", "lightskyblue", "lightslategray", "lightslategrey", "lightsteelblue", "lightyellow", "lime", "limegreen", "linen", "magenta", "maroon", "mediumaquamarine", "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen", "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin", "navajowhite", "navy", "oldlace", "olive", "olivedrab", "orange", "orangered", "orchid", "palegoldenrod", "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru", "pink", "plum", "powderblue", "purple", "rebeccapurple", "red", "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell", "sienna", "silver", "skyblue", "slateblue", "slategray", "slategrey", "snow", "springgreen", "steelblue", "tan", "teal", "thistle", "tomato", "turquoise", "violet", "wheat", "white", "whitesmoke", "yellow", "yellowgreen"];
+
+
 
 
 module.exports = new LogBeautify();
