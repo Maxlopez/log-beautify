@@ -7,7 +7,7 @@
 
 # log-beautify
 
-Show log messages on your terminal with style :-) . Stop using console.log() and use log.success(), log.info(), log.warn(), log.error(). Use debugging levels to enable or disable log messages.
+Show log messages on your terminal with style :-) . Use debugging levels to enable or disable log messages.
 
 # Installation
 ```bash
@@ -30,6 +30,16 @@ log.error('Error');
 ```
 
 
+# Use case :-)
+<p align="center">
+	<br>
+	<img src="https://codexhelp.com/log-beautify/code-marvel.png" alt="log-beautify">
+	<img src="https://codexhelp.com/log-beautify/terminal-marvel.png" alt="log-beautify">
+	<br>
+	<br>
+</p>
+
+
 # API
 ### Log methods
 - `log.success()` *(for text color)*
@@ -46,6 +56,7 @@ log.error('Error');
 - `log.warn_()` *(log.warning_() alias)*
 - `log.error()`
 - `log.error_()`
+- `log.show()`*(default console.log())*
 
 You can create your own log methods, for example:
 
