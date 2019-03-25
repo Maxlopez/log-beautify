@@ -132,7 +132,9 @@ class LogBeautify {
     */
    
     show(...args){
-        console.log(...args);
+        if (this._shouldLog(this.getWorkingLevel())) {
+            console.log(...args);
+        }
     }
 
     setLevel(level, namespace = 'global') {

@@ -32,10 +32,9 @@ log.error('Error');
 
 # Use case :-)
 <p align="center">
-	<br>
 	<img src="https://codexhelp.com/log-beautify/code-marvel.png" alt="log-beautify">
 	<img src="https://codexhelp.com/log-beautify/terminal-marvel.png" alt="log-beautify">
-	<br>
+	<img src="https://codexhelp.com/log-beautify/browser-marvel.png" alt="log-beautify">
 	<br>
 </p>
 
