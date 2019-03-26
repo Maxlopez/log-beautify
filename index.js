@@ -64,7 +64,7 @@ const LOG_BG = 'BG';
 class LogBeautify {
     constructor() {
         this.useSymbols = true;
-        this.useLabels = true;
+        this.useLabels = false;
         this.defaultSymbol = '!';
         this.defaultLevel = 1;//default level for new log methods
         this._localLevels = {};//key=callerFile, value=level
