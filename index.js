@@ -305,7 +305,7 @@ class LogBeautify {
             if (this._getPrefix(type, key) && !this.useLabels) {
                 args.unshift(this._getSymbolString(key, '', ''));
             }
-            text = this._chTextColor(this._colors[key])(...this._fixArgs(args));
+            text = this._chTextColor(this._colors[key])(...this._fixArgs(args, key));
             output = text;
             if (this._getPrefix(type, key)) {
                 if (!this.useLabels) {
@@ -324,7 +324,7 @@ class LogBeautify {
             if (this._getPrefix(type, key) && !this.useLabels) {
                 args.unshift(this._getSymbolString(key, ' ', ''));
             }
-            output = bg(text(...this._fixArgs(args)));
+            output = bg(text(...this._fixArgs(args, key)));
             if (this._getPrefix(type, key)) {
                 if (!this.useLabels) {
                     console.log(output);
@@ -376,7 +376,11 @@ class LogBeautify {
             if (type === LOG_TEXT) {
                 const text = this._chTextColor(this._bgTextColors[key + '_'] || defaultBgTextColor);
                 const bg = this._chBgColor(this._colors[key + '_']);
-                payload = bg(text(symbol + label));
+                if ( key === 'info' && symbol == " 🛈 " ){
+                    payload = bg(text(symbol + label + ' '));
+                } else {
+                    payload = bg(text(symbol + label));
+                }
             }
             if (type === LOG_BG) {
                 payload = this._chTextColor(this._colors[this._getKeyName(key)])(symbol + label);
@@ -388,8 +392,11 @@ class LogBeautify {
         };
     }
 
-    _fixArgs(args) {
+    _fixArgs(args, key) {
         let newArgs = [];
+        if (key === 'info' || key === 'info_' ){
+           args.push('');
+        }
         args.map(arg => {
             if (isArray(arg)) {
                 newArgs.push('[');
