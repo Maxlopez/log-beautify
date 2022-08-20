@@ -3,6 +3,7 @@
   "version": "1.2.0",
   "description": "Show log messages on your terminal with style :-) . Use debugging levels to enable or disable log messages.",
   "main": "index.js",
+  "types": "./index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
